@@ -65,7 +65,7 @@ const ProductManagement: React.FC = () => {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5F9598]" size={18} />
           <input 
             type="text" 
-            placeholder="Search by SKU, Product Name..."
+            placeholder="Search inventory..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-11 pr-4 py-4 bg-white border border-[#1D546D]/10 rounded-[1.5rem] focus:ring-2 focus:ring-[#5F9598] outline-none text-xs font-bold text-[#061E29] shadow-sm"
@@ -87,7 +87,7 @@ const ProductManagement: React.FC = () => {
              </div>
              <div className="border-2 border-dashed border-[#1D546D] rounded-[1.5rem] p-8 flex flex-col items-center justify-center text-center gap-3">
                 <UploadCloud size={32} className="text-[#5F9598]" />
-                <p className="text-[10px] font-bold text-[#5F9598] uppercase tracking-widest">Drop CSV or Excel files here</p>
+                <p className="text-[10px] font-bold text-[#5F9598] uppercase tracking-widest">Drop files here</p>
              </div>
           </motion.div>
         )}
@@ -100,7 +100,6 @@ const ProductManagement: React.FC = () => {
         className="grid grid-cols-1 gap-4"
       >
         {filtered.map(product => {
-          const hasDiscount = !!product.discountPrice;
           const isLowStock = product.stock < 10;
 
           return (
@@ -113,30 +112,19 @@ const ProductManagement: React.FC = () => {
               <div className="flex gap-4">
                 <div className="relative flex-shrink-0">
                   <img src={product.image} className="w-20 h-20 rounded-2xl object-cover" alt="" />
-                  {product.variants && (
-                    <div className="absolute -bottom-2 -right-2 w-7 h-7 bg-[#061E29] text-[#5F9598] rounded-xl flex items-center justify-center border-2 border-white shadow-sm">
-                      <Layers size={14}/>
-                    </div>
-                  )}
                 </div>
                 <div className="flex-grow min-w-0 flex flex-col justify-center">
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="font-black text-[#061E29] text-sm truncate uppercase tracking-tight">{product.title[language]}</h4>
-                      <p className="text-[9px] font-bold text-[#5F9598] uppercase tracking-[0.2em] mt-0.5">SKU: {product.sku || 'SKU_001'}</p>
+                      <p className="text-[9px] font-bold text-[#5F9598] uppercase tracking-[0.2em] mt-0.5">SKU: {product.sku}</p>
                     </div>
-                    <span className={`text-[8px] font-black uppercase px-2 py-1 rounded-lg ${product.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
-                      {product.status || 'Active'}
-                    </span>
                   </div>
                   
                   <div className="mt-2 flex items-center justify-between">
+                    <span className="text-sm font-black text-[#061E29]">₹{product.price}</span>
                     <div className="flex items-center gap-2">
-                       <span className={`text-sm font-black ${hasDiscount ? 'text-emerald-600' : 'text-[#061E29]'}`}>₹{product.discountPrice || product.price}</span>
-                       {hasDiscount && <span className="text-[10px] text-[#5F9598] line-through font-bold">₹{product.price}</span>}
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <div className={`w-2 h-2 rounded-full ${isLowStock ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`}></div>
+                       <div className={`w-2 h-2 rounded-full ${isLowStock ? 'bg-rose-500' : 'bg-emerald-500'}`}></div>
                        <span className={`text-[10px] font-bold uppercase tracking-widest ${isLowStock ? 'text-rose-600' : 'text-[#5F9598]'}`}>
                         {product.stock} {t('stockLabel')}
                        </span>
@@ -148,15 +136,12 @@ const ProductManagement: React.FC = () => {
               <div className="flex gap-2 pt-2 border-t border-[#1D546D]/5">
                 <button 
                   onClick={() => handleEdit(product)}
-                  className="flex-1 py-3 bg-[#F3F4F4] rounded-xl text-[10px] font-black uppercase text-[#061E29] flex items-center justify-center gap-2 active:bg-[#1D546D] active:text-white transition-all"
+                  className="flex-1 py-3 bg-[#F3F4F4] rounded-xl text-[10px] font-black uppercase text-[#061E29] flex items-center justify-center gap-2"
                 >
                    <Edit2 size={12}/> {t('editProduct')}
                 </button>
                 <button className="flex-1 py-3 bg-[#F3F4F4] rounded-xl text-[10px] font-black uppercase text-[#061E29] flex items-center justify-center gap-2">
                    <BarChart3 size={12}/> Analytics
-                </button>
-                <button className="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center active:scale-95 transition-transform">
-                   <Trash2 size={16}/>
                 </button>
               </div>
             </motion.div>

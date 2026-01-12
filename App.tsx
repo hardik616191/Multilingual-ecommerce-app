@@ -1,7 +1,7 @@
 
 import React, { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
-import { Language, UserRole, CartItem, Product, Order, UserProfile, Address, MerchantBusinessInfo, Payout, Coupon, Notification } from './types';
+import { Language, UserRole, CartItem, Product, Order, UserProfile, Address, MerchantBusinessInfo, Payout, Notification } from './types';
 import { translations } from './i18n';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -25,7 +25,7 @@ import SupportView from './views/SupportView';
 import NotificationView from './views/NotificationView';
 import AIHub from './views/AIHub';
 import { ArrowUp } from 'lucide-react';
-import { db } from './db';
+import { db, TableName } from './db';
 
 export type ViewType = 'home' | 'products' | 'orders' | 'profile' | 'add-product' | 'product-detail' | 'cart' | 'checkout' | 'wishlist' | 'finance' | 'marketing' | 'customers' | 'settings' | 'tracking' | 'support' | 'notifications' | 'ai-hub';
 
@@ -50,7 +50,7 @@ interface AppContextType {
   toggleWishlist: (productId: string) => void;
   t: (key: keyof typeof translations['en']) => string;
   currentView: ViewType;
-  setView: (view: ViewType, pushToHistory?: boolean) => void;
+  setView: (view: ViewType, pushToHistory?: boolean, smoothScroll?: boolean) => void;
   goBack: () => void;
   selectedProduct: Product | null;
   setSelectedProduct: (p: Product | null) => void;
@@ -62,8 +62,6 @@ interface AppContextType {
   businessInfo: MerchantBusinessInfo;
   updateBusinessInfo: (info: MerchantBusinessInfo) => void;
   payouts: Payout[];
-  coupons: Coupon[];
-  addCoupon: (c: Coupon) => void;
   recentlyViewed: string[];
   notifications: Notification[];
   markAsRead: (id: string) => void;
@@ -108,8 +106,19 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('shaileshbhai_cart');
     return saved ? JSON.parse(saved) : [];
   });
-  const [coupons, setCoupons] = useState<Coupon[]>(() => db.select<Coupon>('coupons'));
   const [businessInfo, setBusinessInfo] = useState<MerchantBusinessInfo>(() => db.select<MerchantBusinessInfo>('merchants')[0]);
+
+  useEffect(() => {
+    const unsubscribe = db.subscribe((table: TableName) => {
+      console.log(`Real-time Sync: Hydrating ${table}`);
+      switch (table) {
+        case 'products': setProducts(db.select<Product>('products')); break;
+        case 'orders': setOrders(db.select<Order>('orders')); break;
+        case 'merchants': setBusinessInfo(db.select<MerchantBusinessInfo>('merchants')[0]); break;
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   const [buyNowItem, setBuyNowItem] = useState<CartItem | null>(null);
   const [wishlist, setWishlist] = useState<string[]>([]);
@@ -122,7 +131,6 @@ const App: React.FC = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Use scroll progress for a visual indicator
   const { scrollYProgress } = useScroll({ container: scrollContainerRef });
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -131,8 +139,8 @@ const App: React.FC = () => {
   });
   
   const [notifications, setNotifications] = useState<Notification[]>([
-    { id: 'n1', title: 'Order Update', message: 'Your Fafda is on the way!', date: new Date().toISOString(), read: false, type: 'order' },
-    { id: 'n2', title: 'Fresh Deal!', message: '20% off on Gathiya this Sunday.', date: new Date().toISOString(), read: false, type: 'deal' }
+    { id: 'n1', title: 'Order Update', message: 'Your order is on the way!', date: new Date().toISOString(), read: false, type: 'order' },
+    { id: 'n2', title: 'System Message', message: 'Welcome to shaileshbhai no nasto.', date: new Date().toISOString(), read: false, type: 'system' }
   ]);
 
   useEffect(() => {
@@ -162,15 +170,23 @@ const App: React.FC = () => {
     return (translations[language] as any)[key] || (translations[Language.ENGLISH] as any)[key];
   };
 
-  const setView = useCallback((view: ViewType, pushToHistory = true) => {
+  const setView = useCallback((view: ViewType, pushToHistory = true, smoothScroll = false) => {
     if (view === currentView) return;
+    
+    const persistBuyNow = ['checkout', 'product-detail'].includes(view);
+    if (!persistBuyNow) setBuyNowItem(null);
+
     if (pushToHistory) {
       setViewStack(prev => [...prev, currentView]);
       window.history.pushState({ view }, "", "");
     }
     setCurrentView(view);
+    
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({ top: 0 });
+      scrollContainerRef.current.scrollTo({ 
+        top: 0, 
+        behavior: smoothScroll ? 'smooth' : 'auto' 
+      });
     }
   }, [currentView]);
 
@@ -199,30 +215,21 @@ const App: React.FC = () => {
   };
 
   const addProduct = (p: Product) => {
-    const saved = db.insert('products', p);
-    setProducts(prev => [saved, ...prev]);
+    db.insert('products', p);
   };
   
   const updateProduct = (p: Product) => {
-    const saved = db.update('products', p.id, p);
-    if (saved) setProducts(prev => prev.map(prod => prod.id === p.id ? saved : prod));
+    db.update('products', p.id, p);
   };
 
   const updateOrderStatus = (id: string, status: any) => {
-    const saved = db.update<Order>('orders', id, { status });
-    if (saved) setOrders(prev => prev.map(o => o.id === id ? saved : o));
-  };
-
-  const addCoupon = (c: Coupon) => {
-    const saved = db.insert('coupons', c);
-    setCoupons(prev => [saved, ...prev]);
+    db.update<Order>('orders', id, { status });
   };
 
   const updateBusinessInfo = (info: MerchantBusinessInfo) => {
     const merchants = db.select<MerchantBusinessInfo>('merchants');
     if (merchants.length > 0) {
       db.update<MerchantBusinessInfo>('merchants', merchants[0].id, info);
-      setBusinessInfo(info);
     }
   };
 
@@ -262,19 +269,17 @@ const App: React.FC = () => {
     const orderWithSteps = {
       ...order,
       trackingSteps: [
-        { status: 'pending', timestamp: new Date().toISOString(), location: 'Kitchen', completed: true },
-        { status: 'confirmed', timestamp: '', location: 'Kitchen', completed: false },
-        { status: 'shipped', timestamp: '', location: 'On the road', completed: false },
-        { status: 'delivered', timestamp: '', location: 'At your door', completed: false },
+        { status: 'pending', timestamp: new Date().toISOString(), location: 'Warehouse', completed: true },
+        { status: 'confirmed', timestamp: '', location: 'Processing', completed: false },
+        { status: 'shipped', timestamp: '', location: 'Logistics', completed: false },
+        { status: 'delivered', timestamp: '', location: 'Customer', completed: false },
       ]
     };
     
     db.placeOrderTransaction(orderWithSteps as any, products);
-    setOrders(db.select<Order>('orders'));
-    setProducts(db.select<Product>('products'));
     if (!buyNowItem) clearCart();
     setBuyNowItem(null);
-    setView('profile');
+    setView('profile', true, true);
   };
 
   const markAsRead = (id: string) => {
@@ -319,14 +324,13 @@ const App: React.FC = () => {
       products, addProduct, updateProduct, cart, addToCart, updateCartQty, removeFromCart, clearCart,
       wishlist, toggleWishlist, t, currentView, setView, goBack,
       selectedProduct, setSelectedProduct, productToEdit, setProductToEdit, orders, updateOrderStatus, placeOrder,
-      businessInfo, updateBusinessInfo, payouts, coupons, addCoupon,
+      businessInfo, updateBusinessInfo, payouts,
       recentlyViewed, notifications, markAsRead, selectedOrder, setSelectedOrder,
       buyNowItem, setBuyNowItem
     }}>
       <div className="h-full flex flex-col bg-[#F3F4F4] overflow-hidden">
         {role && <Header />}
         
-        {/* Scroll Progress Bar */}
         {role && (
           <motion.div
             className="fixed top-14 left-0 right-0 h-1 bg-[#5F9598] origin-left z-50"
@@ -337,15 +341,15 @@ const App: React.FC = () => {
         <main 
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-grow relative overflow-y-auto pb-24 scroll-smooth"
+          className="flex-grow relative overflow-y-auto pb-24 main-scroll-container"
         >
           <AnimatePresence mode="wait">
             <motion.div
               key={!hasConfirmedLanguage ? 'lang-select' : role ? (role + currentView) : 'landing'}
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
               className="container mx-auto px-4 py-4 h-full"
             >
               {renderViewContent()}

@@ -1,12 +1,14 @@
+
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../App';
-import { motion } from 'framer-motion';
-import { ArrowLeft, ShoppingCart, Star, Heart, Share2, Check, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, ShoppingCart, Star, Heart, Share2, Check, Zap, AlertCircle } from 'lucide-react';
 import { ProductVariant } from '../types';
 
 const ProductDetail: React.FC = () => {
   const { selectedProduct, setView, t, language, addToCart, toggleWishlist, wishlist, setBuyNowItem } = useApp();
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>();
+  const [showError, setShowError] = useState(false);
 
   if (!selectedProduct) return null;
 
@@ -17,8 +19,7 @@ const ProductDetail: React.FC = () => {
   }, [selectedProduct.variants, selectedVariantId]);
 
   const currentPrice = useMemo(() => {
-    const basePrice = selectedProduct.discountPrice || selectedProduct.price;
-    return basePrice + (selectedVariant?.priceDelta || 0);
+    return selectedProduct.price + (selectedVariant?.priceDelta || 0);
   }, [selectedProduct, selectedVariant]);
 
   const variantsByType = useMemo(() => {
@@ -32,7 +33,8 @@ const ProductDetail: React.FC = () => {
 
   const validateSelection = () => {
     if (selectedProduct.variants && selectedProduct.variants.length > 0 && !selectedVariantId) {
-      alert("Please select a variant first!");
+      setShowError(true);
+      setTimeout(() => setShowError(false), 3000);
       return false;
     }
     return true;
@@ -59,7 +61,7 @@ const ProductDetail: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-6 pb-40">
       <div className="flex items-center justify-between mb-4">
         <button onClick={() => setView('home')} className="p-2 -ml-2 rounded-full active:bg-[#1D546D]/10 text-[#061E29]">
           <ArrowLeft size={24} />
@@ -87,7 +89,7 @@ const ProductDetail: React.FC = () => {
           </div>
           <div className="bg-[#5F9598]/10 text-[#5F9598] px-2 py-1 rounded-lg flex items-center gap-1 text-sm font-bold">
             <Star size={14} fill="currentColor" />
-            {selectedProduct.rating}
+            {selectedProduct.rating.toFixed(1)}
           </div>
         </div>
 
@@ -95,17 +97,17 @@ const ProductDetail: React.FC = () => {
           {selectedProduct.description[language]}
         </p>
 
-        {/* Variants Selection UI */}
         {Object.keys(variantsByType).length > 0 && (
           <div className="space-y-4">
             {Object.entries(variantsByType).map(([type, options]) => (
               <div key={type} className="space-y-3">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xs font-black text-[#061E29] uppercase tracking-widest">Select {type}</h4>
-                  <span className="text-[9px] font-bold text-[#5F9598] uppercase">Required</span>
+                  <span className={`text-[9px] font-bold uppercase transition-colors ${showError ? 'text-rose-500 animate-pulse' : 'text-[#5F9598]'}`}>
+                    {showError ? 'Selection Required' : 'Required'}
+                  </span>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  {/* Fix: Explicitly cast 'options' to ProductVariant[] to resolve 'Property map does not exist on type unknown' */}
                   {(options as ProductVariant[]).map((v) => {
                     const isSelected = selectedVariantId === v.id;
                     const isOutOfStock = v.stock <= 0;
@@ -141,31 +143,15 @@ const ProductDetail: React.FC = () => {
         <div className="flex items-center gap-2 text-[#5F9598] text-xs font-bold bg-[#5F9598]/5 p-3 rounded-2xl border border-[#5F9598]/10">
           <Check size={16} />
           {selectedVariant 
-            ? selectedVariant.stock > 0 ? `${selectedVariant.stock} in stock for this variant` : t('outOfStock')
-            : selectedProduct.stock > 0 ? `${selectedProduct.stock} ${t('stockLabel')}` : t('outOfStock')}
-        </div>
-
-        <div className="pt-4 border-t border-[#1D546D]/5">
-           <h4 className="text-xs font-bold text-[#1D546D] uppercase mb-4">{t('reviews')}</h4>
-           <div className="space-y-4">
-             <div className="bg-white p-4 rounded-2xl border border-[#1D546D]/5">
-               <div className="flex justify-between mb-2">
-                 <span className="text-xs font-bold text-[#061E29]">Rajesh K.</span>
-                 <div className="flex gap-0.5 text-[#5F9598]">
-                    {[1,2,3,4,5].map(i => <Star key={i} size={10} fill="currentColor"/>)}
-                 </div>
-               </div>
-               <p className="text-xs text-[#1D546D]">Excellent quality, fast delivery in Ahmedabad!</p>
-             </div>
-           </div>
+            ? selectedVariant.stock > 0 ? `${selectedVariant.stock} in stock` : t('outOfStock')
+            : selectedProduct.stock > 0 ? `${selectedProduct.stock} available` : t('outOfStock')}
         </div>
       </div>
 
-      {/* Floating Action Bar */}
-      <div className="fixed bottom-20 left-4 right-4 bg-[#061E29] rounded-[2rem] p-4 flex flex-col gap-3 shadow-2xl z-40 border border-[#1D546D]/20">
+      <div className="fixed bottom-20 left-4 right-4 bg-[#061E29]/90 backdrop-blur-lg rounded-[2.5rem] p-4 flex flex-col gap-3 shadow-2xl z-40 border border-[#1D546D]/20">
         <div className="flex items-center justify-between px-2">
           <div className="pl-2">
-            <span className="text-[10px] text-[#5F9598] font-bold uppercase block">{t('total')}</span>
+            <span className="text-[10px] text-[#5F9598] font-bold uppercase block">Price</span>
             <span className="text-xl font-bold text-white">₹{currentPrice}</span>
           </div>
           <div className="flex gap-2">
@@ -176,13 +162,14 @@ const ProductDetail: React.FC = () => {
               <ShoppingCart size={18} />
               {t('addToCart')}
             </button>
-            <button 
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
               onClick={handleBuyNow}
-              className="bg-[#5F9598] text-[#061E29] px-6 py-3 rounded-2xl font-black uppercase tracking-wider flex items-center gap-2 active:scale-95 transition-all shadow-lg shadow-[#5F9598]/20"
+              className="bg-[#5F9598] text-[#061E29] px-6 py-3 rounded-2xl font-black uppercase tracking-wider flex items-center gap-2 transition-all shadow-lg shadow-[#5F9598]/20 relative overflow-hidden group"
             >
               <Zap size={18} fill="currentColor" />
               {t('buyNow')}
-            </button>
+            </motion.button>
           </div>
         </div>
       </div>

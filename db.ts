@@ -1,11 +1,24 @@
 
-import { Product, Order, MerchantBusinessInfo, Coupon, Payout, UserRole, Language } from './types';
+import { Product, Order, MerchantBusinessInfo, Payout, UserRole, Language } from './types';
 import { MOCK_PRODUCTS } from './constants';
 
-type TableName = 'products' | 'orders' | 'merchants' | 'coupons' | 'payouts' | 'settings';
+export type TableName = 'products' | 'orders' | 'merchants' | 'coupons' | 'payouts' | 'settings';
+
+type DBChangeCallback = (table: TableName) => void;
 
 class DBService {
   private prefix = 'shaileshbhai_sql_';
+  private syncChannel: BroadcastChannel;
+  private listeners: Set<DBChangeCallback> = new Set();
+
+  constructor() {
+    this.syncChannel = new BroadcastChannel('shaileshbhai_sync');
+    this.syncChannel.onmessage = (event) => {
+      if (event.data && event.data.type === 'DB_UPDATE') {
+        this.notifyListeners(event.data.table);
+      }
+    };
+  }
 
   private getTable<T>(name: TableName): T[] {
     const data = localStorage.getItem(this.prefix + name);
@@ -14,13 +27,26 @@ class DBService {
 
   private saveTable<T>(name: TableName, data: T[]) {
     localStorage.setItem(this.prefix + name, JSON.stringify(data));
+    // Broadcast to other tabs
+    this.syncChannel.postMessage({ type: 'DB_UPDATE', table: name, timestamp: Date.now() });
+    // Notify local listeners
+    this.notifyListeners(name);
+  }
+
+  private notifyListeners(table: TableName) {
+    this.listeners.forEach(cb => cb(table));
+  }
+
+  public subscribe(cb: DBChangeCallback) {
+    this.listeners.add(cb);
+    return () => this.listeners.delete(cb);
   }
 
   // Initialize DB with seed data
   init() {
     const existingProducts = this.getTable<Product>('products');
-    // Force refresh if the product list is small or non-existent to show the new 100 items
-    if (existingProducts.length < 100) {
+    // Updated threshold to 150 to ensure full catalog hydration
+    if (existingProducts.length < 150) {
       this.saveTable('products', MOCK_PRODUCTS);
     }
     
@@ -38,13 +64,13 @@ class DBService {
     }
   }
 
-  // Generic Query (SELECT * FROM table WHERE ...)
+  // Generic Query
   select<T>(table: TableName, filter?: (item: T) => boolean): T[] {
     const data = this.getTable<T>(table);
     return filter ? data.filter(filter) : data;
   }
 
-  // Insert (INSERT INTO table VALUES ...)
+  // Insert
   insert<T extends { id?: string }>(table: TableName, item: T): T {
     const data = this.getTable<T>(table);
     const newItem = { ...item, id: item.id || Math.random().toString(36).substr(2, 9) };
@@ -52,7 +78,7 @@ class DBService {
     return newItem as T;
   }
 
-  // Update (UPDATE table SET ... WHERE id = ...)
+  // Update
   update<T extends { id: string }>(table: TableName, id: string, updates: Partial<T>): T | null {
     const data = this.getTable<T>(table);
     const index = data.findIndex(i => i.id === id);
@@ -64,18 +90,23 @@ class DBService {
     return updated;
   }
 
-  // Transaction Simulation: Atomic operations
+  // Delete
+  delete(table: TableName, id: string) {
+    const data = this.getTable<any>(table);
+    const filtered = data.filter(i => i.id !== id);
+    this.saveTable(table, filtered);
+  }
+
   async executeTransaction(operations: () => void) {
     try {
       operations();
-      console.log("Relational Transaction Committed Successfully.");
+      console.log("Real-time Relational Transaction Committed.");
     } catch (e) {
-      console.error("Relational Transaction Failed. Rollback would occur here.", e);
+      console.error("Transaction Failed.", e);
       throw e;
     }
   }
 
-  // Specific Relational Logic: Place Order
   placeOrderTransaction(order: Order, products: Product[]) {
     this.executeTransaction(() => {
       this.insert('orders', order);
@@ -97,7 +128,6 @@ class DBService {
     });
   }
   
-  // Clear all for demo reset
   reset() {
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {

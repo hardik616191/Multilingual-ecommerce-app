@@ -20,11 +20,6 @@ export interface Product {
   title: Record<Language, string>;
   description: Record<Language, string>;
   price: number;
-  discountPrice?: number;
-  discountConfig?: {
-    type: 'percentage' | 'fixed';
-    value: number;
-  };
   image: string;
   category: string;
   stock: number;
@@ -74,7 +69,6 @@ export interface Order {
   commission: number;
   tax: number;
   total: number;
-  discountApplied?: number;
   status: OrderStatus;
   date: string;
   address: Address;
@@ -144,15 +138,6 @@ export interface Notification {
   date: string;
   read: boolean;
   type: 'order' | 'deal' | 'system' | 'performance';
-}
-
-export interface Coupon {
-  id: string;
-  code: string;
-  discountType: 'percentage' | 'fixed';
-  value: number;
-  active: boolean;
-  usageCount: number;
 }
 
 export interface Payout {

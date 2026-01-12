@@ -2,7 +2,7 @@
 import React from 'react';
 import { useApp } from '../App';
 import { Language } from '../types';
-import { Globe, LogOut } from 'lucide-react';
+import { Globe, LogOut, Radio } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { language, setLanguage, setRole, setView } = useApp();
@@ -17,7 +17,13 @@ const Header: React.FC = () => {
           <div className="w-8 h-8 bg-[#5F9598] rounded-lg flex items-center justify-center shadow-md">
             <span className="text-[#061E29] font-bold text-sm">S</span>
           </div>
-          <span className="text-lg font-bold tracking-tight">shaileshbhai no nasto</span>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold tracking-tight leading-none">shaileshbhai</span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
+              <span className="text-[7px] font-black uppercase text-[#5F9598] tracking-widest">Live Sync</span>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

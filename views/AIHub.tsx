@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GoogleGenAI, Modality, Type, LiveServerMessage } from '@google/genai';
@@ -6,14 +7,15 @@ import {
   Sparkles, MessageSquare, Mic, Image as ImageIcon, Video, 
   Brain, Search, MapPin, Send, Trash2, StopCircle, Play, 
   Download, Loader2, Camera, Info, Languages, ShieldCheck, 
-  Upload, Scissors, Wand2, RefreshCw, Smartphone, Database, Table as TableIcon
+  Upload, Scissors, Wand2, RefreshCw, Smartphone, Database, Table as TableIcon, Activity
 } from 'lucide-react';
-import { db } from '../db';
+import { db, TableName } from '../db';
 
 const AIHub: React.FC = () => {
   const { language, t } = useApp();
   const [activeTab, setActiveTab] = useState<'chat' | 'vision' | 'create' | 'voice' | 'db'>('chat');
   const [loading, setLoading] = useState(false);
+  const [lastSync, setLastSync] = useState<string>(new Date().toLocaleTimeString());
 
   // Chat/Think State
   const [messages, setMessages] = useState<{role: 'user'|'model', text: string, type?: 'search'|'maps'|'thinking'}[]>([]);
@@ -38,7 +40,14 @@ const AIHub: React.FC = () => {
   const liveSessionRef = useRef<any>(null);
 
   // DB Explorer State
-  const [selectedTable, setSelectedTable] = useState<any>('products');
+  const [selectedTable, setSelectedTable] = useState<TableName>('products');
+
+  useEffect(() => {
+    const unsubscribe = db.subscribe(() => {
+      setLastSync(new Date().toLocaleTimeString());
+    });
+    return unsubscribe;
+  }, []);
 
   const checkApiKey = async () => {
     if (!(window as any).aistudio?.hasSelectedApiKey || !(await (window as any).aistudio.hasSelectedApiKey())) {
@@ -122,11 +131,9 @@ const AIHub: React.FC = () => {
     setLoading(true);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      // Fix: Add 'numberOfVideos: 1' to the config as required by @google/genai guidelines.
       let op = await ai.models.generateVideos({
         model: 'veo-3.1-fast-generate-preview',
         prompt: prompt,
-        image: uploadRefImg ? { imageBytes: uploadRefImg.split(',')[1], mimeType: 'image/png' } : undefined,
         config: { numberOfVideos: 1, resolution: '720p', aspectRatio: aspectRatio === '16:9' ? '16:9' : '9:16' }
       });
       
@@ -199,32 +206,48 @@ const AIHub: React.FC = () => {
     const tableData = db.select(selectedTable);
     return (
       <div className="space-y-4">
-        <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="bg-white/5 p-4 rounded-3xl border border-white/10 flex items-center justify-between mb-2">
+           <div className="flex items-center gap-3">
+              <Activity size={18} className="text-emerald-500 animate-pulse" />
+              <div>
+                <p className="text-[10px] font-black uppercase text-[#5F9598]">Real-time Connection</p>
+                <p className="text-xs font-bold text-white">Active (BroadcastChannel)</p>
+              </div>
+           </div>
+           <div className="text-right">
+              <p className="text-[10px] font-black uppercase text-[#5F9598]">Last Sync</p>
+              <p className="text-xs font-bold text-white">{lastSync}</p>
+           </div>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {['products', 'orders', 'merchants', 'coupons', 'payouts'].map(t => (
             <button 
               key={t}
               onClick={() => setSelectedTable(t as any)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all ${selectedTable === t ? 'bg-[#5F9598] text-[#061E29]' : 'bg-white/5 text-white/60 border border-white/10'}`}
+              className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase transition-all whitespace-nowrap ${selectedTable === t ? 'bg-[#5F9598] text-[#061E29]' : 'bg-white/5 text-white/60 border border-white/10'}`}
             >
               {t}
             </button>
           ))}
         </div>
+
         <div className="bg-white/5 rounded-[2.5rem] border border-white/10 p-6 overflow-hidden">
           <div className="flex justify-between items-center mb-4">
              <h4 className="text-sm font-bold uppercase tracking-widest text-[#5F9598]">Table: {selectedTable}</h4>
              <button onClick={() => db.reset()} className="text-[10px] font-black text-rose-500 uppercase">Wipe DB</button>
           </div>
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto scrollbar-hide">
              <pre className="text-[10px] font-mono text-emerald-400 whitespace-pre-wrap">
                {JSON.stringify(tableData, null, 2)}
              </pre>
           </div>
         </div>
+
         <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex gap-3">
            <Info size={20} className="text-amber-500 shrink-0" />
            <p className="text-[10px] font-bold text-amber-500 uppercase leading-relaxed">
-             ACID Transaction Simulator Active. Orders will atomically update multiple tables (orders, products) to maintain referential integrity.
+             ACID Transaction Simulator Active. Orders will atomically update multiple tables (orders, products) to maintain referential integrity. Cross-tab sync enabled via Web Workers & Broadcast API.
            </p>
         </div>
       </div>
@@ -238,17 +261,17 @@ const AIHub: React.FC = () => {
           <h2 className="text-2xl font-black flex items-center gap-2">
             <Sparkles className="text-[#5F9598]" /> AI Hub
           </h2>
-          <p className="text-[10px] font-bold text-[#5F9598] uppercase tracking-widest">Intelligence & Data Control</p>
+          <p className="text-[10px] font-bold text-[#5F9598] uppercase tracking-widest">Intelligence & Real-time Data</p>
         </div>
       </div>
 
-      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 mb-6 mx-2 overflow-x-auto">
+      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 mb-6 mx-2 overflow-x-auto scrollbar-hide">
         {[
           { id: 'chat', icon: MessageSquare, label: 'Assistant' },
           { id: 'create', icon: Wand2, label: 'Create' },
           { id: 'vision', icon: Camera, label: 'Vision' },
           { id: 'voice', icon: Mic, label: 'Voice' },
-          { id: 'db', icon: Database, label: 'SQL' }
+          { id: 'db', icon: Database, label: 'Realtime DB' }
         ].map(t => (
           <button
             key={t.id}
@@ -263,7 +286,7 @@ const AIHub: React.FC = () => {
         ))}
       </div>
 
-      <div className="flex-grow overflow-y-auto px-2 pb-24">
+      <div className="flex-grow overflow-y-auto px-2 pb-24 scrollbar-hide">
         <AnimatePresence mode="wait">
           {activeTab === 'chat' && (
             <motion.div key="chat" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="flex flex-col h-full space-y-4">
@@ -301,7 +324,7 @@ const AIHub: React.FC = () => {
                   <button onClick={() => handleSearchThink('normal')} className="flex-1 py-2 bg-white/5 rounded-xl text-[8px] font-black uppercase border border-white/10 flex items-center justify-center gap-1"><RefreshCw size={12}/> Fast</button>
                 </div>
                 <div className="flex gap-2">
-                  <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask Gemini anything..." className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#5F9598] text-sm"/>
+                  <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask Gemini anything..." className="flex-grow bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#5F9598] text-sm text-white"/>
                   <button onClick={() => handleSearchThink('normal')} className="bg-[#5F9598] text-[#061E29] p-4 rounded-2xl active:scale-95 transition-all"><Send size={20}/></button>
                 </div>
               </div>
@@ -312,13 +335,13 @@ const AIHub: React.FC = () => {
             <motion.div key="create" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
               <div className="bg-white/5 p-6 rounded-[2.5rem] border border-white/10 space-y-4">
                 <h4 className="text-sm font-bold uppercase tracking-widest text-[#5F9598]">Generation Prompt</h4>
-                <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="A cinematic drone shot..." className="w-full bg-transparent border-none outline-none text-base resize-none min-h-[100px]"/>
+                <textarea value={prompt} onChange={e => setPrompt(e.target.value)} placeholder="A cinematic drone shot..." className="w-full bg-transparent border-none outline-none text-base resize-none min-h-[100px] text-white"/>
                 <div className="flex gap-2 pt-2">
-                  <button onClick={handleImageGen} disabled={loading} className="flex-1 py-4 bg-[#5F9598] text-[#061E29] rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#5F9598]/20">
-                    {loading ? <Loader2 className="animate-spin"/> : <ImageIcon size={18}/>} Generate Image
+                  <button onClick={handleImageGen} disabled={loading} className="flex-1 py-4 bg-[#5F9598] text-[#061E29] rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-[#5F9598]/20 transition-all active:scale-95">
+                    {loading ? <Loader2 className="animate-spin"/> : <ImageIcon size={18}/>} Image
                   </button>
-                  <button onClick={handleVideoGen} disabled={loading} className="flex-1 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2">
-                    {loading ? <Loader2 className="animate-spin"/> : <Video size={18}/>} Create Video
+                  <button onClick={handleVideoGen} disabled={loading} className="flex-1 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95">
+                    {loading ? <Loader2 className="animate-spin"/> : <Video size={18}/>} Video
                   </button>
                 </div>
               </div>

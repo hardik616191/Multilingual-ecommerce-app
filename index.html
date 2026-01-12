@@ -41,11 +41,21 @@
           -webkit-tap-highlight-color: transparent;
           overscroll-behavior-y: contain;
           background-color: #F3F4F4;
+          /* Optimization for smooth scroll across the app */
           scroll-behavior: smooth;
         }
+
+        /* Improved Scrollable Area for Main App */
+        .main-scroll-container {
+          scroll-behavior: smooth;
+          -webkit-overflow-scrolling: touch; /* Momentum scrolling on iOS */
+          scrollbar-gutter: stable;
+        }
+
         .safe-area-bottom {
           padding-bottom: env(safe-area-inset-bottom);
         }
+
         /* Prevent browser pull-to-refresh on mobile */
         html, body {
           position: fixed;
@@ -53,26 +63,42 @@
           width: 100%;
           height: 100%;
         }
+
         #root {
           height: 100%;
           overflow: hidden;
         }
         
-        /* Utility for horizontal carousels with snapping */
+        /* High-quality horizontal carousels with smooth snapping */
         .snap-carousel {
           scroll-snap-type: x mandatory;
           scroll-behavior: smooth;
           -webkit-overflow-scrolling: touch;
         }
+
         .snap-item {
           scroll-snap-align: start;
+          scroll-snap-stop: always;
         }
+
         .scrollbar-hide::-webkit-scrollbar {
           display: none;
         }
+
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
+        }
+
+        /* Fluid view transitions */
+        .view-transition-enter {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        .view-transition-enter-active {
+          opacity: 1;
+          transform: translateY(0);
+          transition: opacity 300ms, transform 300ms ease-out;
         }
     </style>
 <script type="importmap">
