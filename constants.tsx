@@ -1,69 +1,80 @@
 
-import { Language, Product } from './types';
+import { Language, Product, FulfillmentMode } from './types';
 
-export const MOCK_PRODUCTS: Product[] = [
-  {
-    id: '1',
-    title: {
-      [Language.ENGLISH]: 'Handwoven Silk Saree',
-      [Language.HINDI]: 'हाथ से बनी रेशमी साड़ी',
-      [Language.GUJARATI]: 'હાથથી વણેલી રેશમી સાડી'
-    },
-    description: {
-      [Language.ENGLISH]: 'Pure silk handwoven traditional saree from Patan.',
-      [Language.HINDI]: 'पाटन की शुद्ध रेशम की हाथ से बनी पारंपरिक साड़ी।',
-      [Language.GUJARATI]: 'પાટણની શુદ્ધ રેશમની હાથથી વણેલી પરંપરાગત સાડી.'
-    },
-    price: 4500,
-    discountPrice: 3999,
-    image: 'https://picsum.photos/seed/saree/400/400',
-    category: 'Clothing',
-    stock: 5,
-    rating: 4.8,
-    reviews: [],
-    merchantId: 'm1'
-  },
-  {
-    id: '2',
-    title: {
-      [Language.ENGLISH]: 'Organic Peanut Oil',
-      [Language.HINDI]: 'ऑर्गेनिक मूंगफली का तेल',
-      [Language.GUJARATI]: 'ઓર્ગેનિક સીંગતેલ'
-    },
-    description: {
-      [Language.ENGLISH]: 'Cold pressed organic peanut oil for healthy cooking.',
-      [Language.HINDI]: 'स्वस्थ खाना पकाने के लिए कोल्ड प्रेस्ड ऑर्गेनिक मूंगफली का तेल।',
-      [Language.GUJARATI]: 'સ્વસ્થ રસોઈ માટે કોલ્ડ પ્રેસ્ડ ઓર્ગેનિક સીંગતેલ.'
-    },
-    price: 350,
-    image: 'https://picsum.photos/seed/oil/400/400',
-    category: 'Grocery',
-    stock: 50,
-    rating: 4.5,
-    reviews: [],
-    merchantId: 'm1'
-  },
-  {
-    id: '3',
-    title: {
-      [Language.ENGLISH]: 'Brass Handicraft Statue',
-      [Language.HINDI]: 'पीतल हस्तकला मूर्ति',
-      [Language.GUJARATI]: 'પિત્તળની હસ્તકલાની મૂર્તિ'
-    },
-    description: {
-      [Language.ENGLISH]: 'Intricately designed brass idol for home decor.',
-      [Language.HINDI]: 'घर की सजावट के लिए जटिल रूप से डिजाइन की गई पीतल की मूर्ति।',
-      [Language.GUJARATI]: 'ઘરની સજાવટ માટે જટિલ રીતે ડિઝાઇન કરેલી પિત્તળની મૂર્તિ.'
-    },
-    price: 1200,
-    image: 'https://picsum.photos/seed/statue/400/400',
-    category: 'Decor',
-    stock: 2,
-    rating: 4.9,
-    reviews: [],
-    merchantId: 'm2'
+// Helper to generate 100 authentic products
+const generate100Products = (): Product[] => {
+  const categories = ['Snacks', 'Sweets', 'Grocery', 'Pickles', 'Beverages'];
+  const brands = ['Shaileshbhai Original', 'Surti Delights', 'Rajkot Special', 'Ahmedabadi Tadka', 'Kathiyawadi Swad'];
+  
+  const baseProducts = [
+    { en: 'Bhavnagari Gathiya', hi: 'भावनगरी गाठिया', gu: 'ભાવનગરી ગાંઠિયા', cat: 'Snacks' },
+    { en: 'Special Nylon Khaman', hi: 'स्पेशल नायलॉन खमन', gu: 'સ્પેશિયલ નાયલોન ખમણ', cat: 'Snacks' },
+    { en: 'Methi Na Gota Mix', hi: 'मेथी के गोटा मिक्स', gu: 'મેથીના ગોટા મિક્સ', cat: 'Snacks' },
+    { en: 'Masala Fafda', hi: 'मसाला फाफड़ा', gu: 'મસાલા ફાફડા', cat: 'Snacks' },
+    { en: 'Vanela Gathiya', hi: 'वनेला गाठिया', gu: 'વણેલા ગાંઠિયા', cat: 'Snacks' },
+    { en: 'Ratlami Sev', hi: 'रतलामी सेव', gu: 'રતલામી સેવ', cat: 'Snacks' },
+    { en: 'Dry Fruit Farali Chevdo', hi: 'ड्राई फ्रूट फराली चेवड़ो', gu: 'ડ્રાયફ્રૂટ ફરાળી ચેવડો', cat: 'Snacks' },
+    { en: 'Kesar Peda', hi: 'केसर पेड़ा', gu: 'કેસર પેંડા', cat: 'Sweets' },
+    { en: 'Dry Fruit Halvasan', hi: 'ड्राई फ्रूट हलवासन', gu: 'ડ્રાયફ્રૂટ હલવાસન', cat: 'Sweets' },
+    { en: 'Pure Desi Ghee Laddu', hi: 'शुद्ध देसी घी के लड्डू', gu: 'શુદ્ધ દેશી ઘીના લાડુ', cat: 'Sweets' },
+    { en: 'Kaju Katli Special', hi: 'काजू कतली स्पेशल', gu: 'કાજુ કતરી સ્પેશિયલ', cat: 'Sweets' },
+    { en: 'Mango Pickle (Athanu)', hi: 'आम का अचार', gu: 'કેરીનું અથાણું', cat: 'Pickles' },
+    { en: 'Green Chilli Pickle', hi: 'हरी मिर्च का अचार', gu: 'મરચાનું અથાણું', cat: 'Pickles' },
+    { en: 'Gunda Ker Pickle', hi: 'गुंदा केर का अचार', gu: 'ગુંદા કેરનું અથાણું', cat: 'Pickles' },
+    { en: 'Organic Peanut Oil', hi: 'ऑर्गेनिक मूंगफली का तेल', gu: 'ઓર્ગેનિક સીંગતેલ', cat: 'Grocery' },
+    { en: 'Special Tea Masala', hi: 'स्पेशल चाय मसाला', gu: 'સ્પેશિયલ ચા મસાલો', cat: 'Grocery' },
+    { en: 'Strong Dust Tea', hi: 'कड़क डस्ट चाय', gu: 'કડક ડસ્ટ ચા', cat: 'Beverages' },
+    { en: 'Instant Coffee Mix', hi: 'इंस्टेंट कॉफी मिक्स', gu: 'ઇન્સ્ટન્ટ કોફી મિક્સ', cat: 'Beverages' },
+    { en: 'Roasted Diet Mamra', hi: 'रोस्टेड डाइट ममरा', gu: 'રોસ્ટેડ ડાયટ મમરા', cat: 'Snacks' },
+    { en: 'Chana Jor Garam', hi: 'चना जोर गरम', gu: 'ચણા જોર ગરમ', cat: 'Snacks' },
+  ];
+
+  const products: Product[] = [];
+
+  for (let i = 1; i <= 100; i++) {
+    const base = baseProducts[(i - 1) % baseProducts.length];
+    const brand = brands[i % brands.length];
+    const price = 100 + (i * 5);
+    const hasDiscount = i % 3 === 0;
+    const variantSuffix = i > 20 ? ` (Batch ${Math.floor(i / 20) + 1})` : '';
+
+    products.push({
+      id: i.toString(),
+      sku: `SKU-${1000 + i}`,
+      brand: brand,
+      status: 'active',
+      fulfillmentMode: i % 10 === 0 ? 'PLATFORM_FULFILLED' : 'SELLER_FULFILLED',
+      title: {
+        [Language.ENGLISH]: `${base.en}${variantSuffix}`,
+        [Language.HINDI]: `${base.hi}${variantSuffix}`,
+        [Language.GUJARATI]: `${base.gu}${variantSuffix}`
+      },
+      description: {
+        [Language.ENGLISH]: `Authentic ${base.en} from ${brand}. Made with premium ingredients and traditional recipes. Perfect for your tea-time cravings.`,
+        [Language.HINDI]: `${brand} से प्रामाणिक ${base.hi}। प्रीमियम सामग्री और पारंपरिक व्यंजनों के साथ बनाया गया। आपके चाय के समय के लिए बिल्कुल सही।`,
+        [Language.GUJARATI]: `${brand} તરફથી અસલી ${base.gu}. પ્રીમિયમ સામગ્રી અને પરંપરાગત વાનગીઓ સાથે બનાવેલ. તમારી ચાના સમય માટે એકદમ યોગ્ય.`
+      },
+      price: price,
+      discountPrice: hasDiscount ? Math.floor(price * 0.85) : undefined,
+      discountConfig: hasDiscount ? { type: 'percentage', value: 15 } : undefined,
+      image: `https://picsum.photos/seed/snack-${i}/400/400`,
+      category: base.cat,
+      stock: 10 + (i % 50),
+      rating: 4 + (Math.random() * 1),
+      reviews: [],
+      merchantId: i % 2 === 0 ? 'm1' : 'm2',
+      variants: i % 5 === 0 ? [
+        { id: `v-${i}-1`, sku: `SKU-${1000 + i}-S`, type: 'Weight', value: '250g', priceDelta: 0, stock: 20 },
+        { id: `v-${i}-2`, sku: `SKU-${1000 + i}-M`, type: 'Weight', value: '500g', priceDelta: Math.floor(price * 0.8), stock: 15 },
+        { id: `v-${i}-3`, sku: `SKU-${1000 + i}-L`, type: 'Weight', value: '1kg', priceDelta: Math.floor(price * 1.5), stock: 10 }
+      ] : undefined
+    });
   }
-];
+
+  return products;
+};
+
+export const MOCK_PRODUCTS: Product[] = generate100Products();
 
 export const MOCK_SALES_DATA = [
   { name: 'Mon', sales: 4000 },

@@ -1,7 +1,9 @@
 {
-  "name": "Multilingual Ecommerce app",
-  "description": "A robust, multilingual e-commerce platform supporting English, Hindi, and Gujarati for both Merchants and Customers. Features include merchant dashboards, inventory management, customer browsing, and a seamless shopping experience.",
+  "name": "shaileshbhai no nasto",
+  "description": "Authentic Snacks & Multilingual Marketplace supporting English, Hindi, and Gujarati for both Merchants and Customers. Features include merchant dashboards, inventory management, and a seamless shopping experience.",
   "requestFramePermissions": [
+    "camera",
+    "microphone",
     "geolocation"
   ]
 }
