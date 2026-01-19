@@ -86,12 +86,17 @@ const AddProduct: React.FC = () => {
         config: { imageConfig: { aspectRatio: "1:1" } }
       });
 
-      const imagePart = response.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
-      if (imagePart?.inlineData?.data) {
-        setFormData(prev => ({
-          ...prev,
-          imageUrl: `data:image/png;base64,${imagePart.inlineData.data}`
-        }));
+      // FIX: Correctly iterate through parts to find the image data
+      for (const candidate of response.candidates || []) {
+        for (const part of candidate.content.parts) {
+          if (part.inlineData?.data) {
+            setFormData(prev => ({
+              ...prev,
+              imageUrl: `data:image/png;base64,${part.inlineData.data}`
+            }));
+            return;
+          }
+        }
       }
     } catch (error) {
       console.error(error);
@@ -146,7 +151,7 @@ const AddProduct: React.FC = () => {
     if (productToEdit) updateProduct(productData);
     else addProduct(productData);
 
-    // Sync to Supabase Merchant Table
+    // FIX: Method now exists on db after update to db.ts
     await db.syncProductToCloud(productData);
 
     setLoading(false);

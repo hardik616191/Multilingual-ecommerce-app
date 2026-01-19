@@ -1,7 +1,7 @@
 
 import React, { useState, createContext, useContext, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence, useScroll, useSpring } from 'framer-motion';
-import { Language, UserRole, CartItem, Product, Order, UserProfile, Address, MerchantBusinessInfo, Payout, Notification } from './types';
+import { Language, UserRole, CartItem, Product, Order, UserProfile, Notification, MerchantBusinessInfo, Payout, OrderStatus } from './types';
 import { translations } from './i18n';
 import Header from './components/Header';
 import BottomNav from './components/BottomNav';
@@ -12,14 +12,6 @@ import ProductDetail from './views/ProductDetail';
 import CartView from './views/CartView';
 import CheckoutView from './views/CheckoutView';
 import ProfileView from './views/ProfileView';
-import MerchantDashboard from './views/MerchantDashboard';
-import ProductManagement from './views/ProductManagement';
-import AddProduct from './views/AddProduct';
-import OrderManagement from './views/OrderManagement';
-import EarningsView from './views/EarningsView';
-import BusinessSettings from './views/BusinessSettings';
-import MarketingView from './views/MarketingView';
-import CustomerManagement from './views/CustomerManagement';
 import OrderTracking from './views/OrderTracking';
 import SupportView from './views/SupportView';
 import NotificationView from './views/NotificationView';
@@ -27,7 +19,7 @@ import AIHub from './views/AIHub';
 import { ArrowUp } from 'lucide-react';
 import { db, TableName } from './db';
 
-export type ViewType = 'home' | 'products' | 'orders' | 'profile' | 'add-product' | 'product-detail' | 'cart' | 'checkout' | 'wishlist' | 'finance' | 'marketing' | 'customers' | 'settings' | 'tracking' | 'support' | 'notifications' | 'ai-hub';
+export type ViewType = 'home' | 'profile' | 'product-detail' | 'cart' | 'checkout' | 'wishlist' | 'tracking' | 'support' | 'notifications' | 'ai-hub' | 'products' | 'add-product' | 'orders' | 'earnings' | 'settings' | 'customers' | 'marketing';
 
 interface AppContextType {
   language: Language;
@@ -57,11 +49,8 @@ interface AppContextType {
   productToEdit: Product | null;
   setProductToEdit: (p: Product | null) => void;
   orders: Order[];
-  updateOrderStatus: (id: string, status: any) => void;
+  updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   placeOrder: (order: Order) => void;
-  businessInfo: MerchantBusinessInfo;
-  updateBusinessInfo: (info: MerchantBusinessInfo) => void;
-  payouts: Payout[];
   recentlyViewed: string[];
   notifications: Notification[];
   markAsRead: (id: string) => void;
@@ -69,6 +58,8 @@ interface AppContextType {
   setSelectedOrder: (o: Order | null) => void;
   buyNowItem: CartItem | null;
   setBuyNowItem: (item: CartItem | null) => void;
+  businessInfo: MerchantBusinessInfo;
+  payouts: Payout[];
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -106,13 +97,35 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('shaileshbhai_cart');
     return saved ? JSON.parse(saved) : [];
   });
-  const [businessInfo, setBusinessInfo] = useState<MerchantBusinessInfo>(() => db.select<MerchantBusinessInfo>('merchants')[0]);
 
-  // Sync customer to Supabase when role or language changes
+  const [businessInfo] = useState<MerchantBusinessInfo>({
+    id: 'm1',
+    storeName: 'Shaileshbhai Snacks',
+    ownerName: 'Shailesh Bhai',
+    gstNumber: '24AAAAA0000A1Z5',
+    kycStatus: 'verified',
+    fulfillmentType: 'SELLER_FULFILLED',
+    bankAccount: {
+      accountNumber: '1234567890',
+      ifsc: 'ICIC0001234',
+      bankName: 'ICICI Bank'
+    },
+    metrics: {
+      orderDefectRate: 0,
+      cancellationRate: 0,
+      lateShipmentRate: 0
+    }
+  });
+
+  const [payouts] = useState<Payout[]>([
+    { id: 'pay1', amount: 12500, date: new Date().toISOString(), status: 'completed' },
+    { id: 'pay2', amount: 8400, date: new Date(Date.now() - 604800000).toISOString(), status: 'completed' }
+  ]);
+
   useEffect(() => {
     if (role === UserRole.CUSTOMER) {
       const profile: UserProfile = {
-        id: 'u1', // Simplified ID for mock user
+        id: 'u1',
         name: 'Jatin Kumar',
         email: 'jatin.k@example.com',
         role: UserRole.CUSTOMER,
@@ -125,12 +138,8 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const unsubscribe = db.subscribe((table: TableName) => {
-      console.log(`Real-time Sync: Hydrating ${table}`);
-      switch (table) {
-        case 'products': setProducts(db.select<Product>('products')); break;
-        case 'orders': setOrders(db.select<Order>('orders')); break;
-        case 'merchants': setBusinessInfo(db.select<MerchantBusinessInfo>('merchants')[0]); break;
-      }
+      if (table === 'products') setProducts(db.select<Product>('products'));
+      if (table === 'orders') setOrders(db.select<Order>('orders'));
     });
     return unsubscribe;
   }, []);
@@ -147,15 +156,11 @@ const App: React.FC = () => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const { scrollYProgress } = useScroll({ container: scrollContainerRef });
-  const scaleX = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
-    restDelta: 0.001
-  });
+  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
   
   const [notifications, setNotifications] = useState<Notification[]>([
     { id: 'n1', title: 'Order Update', message: 'Your order is on the way!', date: new Date().toISOString(), read: false, type: 'order' },
-    { id: 'n2', title: 'System Message', message: 'Welcome to shaileshbhai no nasto.', date: new Date().toISOString(), read: false, type: 'system' }
+    { id: 'n2', title: 'Welcome', message: 'Welcome to shaileshbhai no nasto.', date: new Date().toISOString(), read: false, type: 'system' }
   ]);
 
   useEffect(() => {
@@ -170,7 +175,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if (role) {
       localStorage.setItem('shaileshbhai_role', role);
-      // Reset view when switching roles to ensure portal isolation
       setCurrentView('home');
       setViewStack([]);
     } else {
@@ -182,32 +186,21 @@ const App: React.FC = () => {
     localStorage.setItem('shaileshbhai_cart', JSON.stringify(cart));
   }, [cart]);
 
-  const [payouts] = useState<Payout[]>([
-    { id: 'p1', amount: 12500, date: '2024-03-20', status: 'completed' },
-    { id: 'p2', amount: 8400, date: '2024-03-15', status: 'completed' }
-  ]);
-
   const t = (key: any) => {
     return (translations[language] as any)[key] || (translations[Language.ENGLISH] as any)[key];
   };
 
   const setView = useCallback((view: ViewType, pushToHistory = true, smoothScroll = false) => {
     if (view === currentView) return;
-    
     const persistBuyNow = ['checkout', 'product-detail'].includes(view);
     if (!persistBuyNow) setBuyNowItem(null);
-
     if (pushToHistory) {
       setViewStack(prev => [...prev, currentView]);
       window.history.pushState({ view }, "", "");
     }
     setCurrentView(view);
-    
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({ 
-        top: 0, 
-        behavior: smoothScroll ? 'smooth' : 'auto' 
-      });
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: smoothScroll ? 'smooth' : 'auto' });
     }
   }, [currentView]);
 
@@ -238,27 +231,16 @@ const App: React.FC = () => {
   const addProduct = (p: Product) => {
     db.insert('products', p);
   };
-  
+
   const updateProduct = (p: Product) => {
-    db.update('products', p.id, p);
-  };
-
-  const updateOrderStatus = (id: string, status: any) => {
-    db.update<Order>('orders', id, { status });
-  };
-
-  const updateBusinessInfo = (info: MerchantBusinessInfo) => {
-    const merchants = db.select<MerchantBusinessInfo>('merchants');
-    if (merchants.length > 0) {
-      db.update<MerchantBusinessInfo>('merchants', merchants[0].id, info);
-    }
+    // Added explicit type <Product> to db.update call to ensure correct generic inference
+    db.update<Product>('products', p.id, p);
   };
 
   const addToCart = (productId: string, price: number, variantId?: string) => {
     const product = products.find(p => p.id === productId);
     const variant = product?.variants?.find(v => v.id === variantId);
     const sku = variant?.sku || product?.sku || 'SKU_UNKNOWN';
-    
     setCart(prev => {
       const existing = prev.find(i => i.productId === productId && i.variantId === variantId);
       if (existing) {
@@ -286,17 +268,21 @@ const App: React.FC = () => {
     setWishlist(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
+  const updateOrderStatus = (orderId: string, status: OrderStatus) => {
+    // Fix: Explicitly provide <Order> type to db.update to resolve inference issues with partial object literal
+    db.update<Order>('orders', orderId, { status });
+  };
+
   const placeOrder = (order: Order) => {
     const orderWithSteps = {
       ...order,
       trackingSteps: [
-        { status: 'pending', timestamp: new Date().toISOString(), location: 'Warehouse', completed: true },
-        { status: 'confirmed', timestamp: '', location: 'Processing', completed: false },
-        { status: 'shipped', timestamp: '', location: 'Logistics', completed: false },
-        { status: 'delivered', timestamp: '', location: 'Customer', completed: false },
+        { status: 'pending' as any, timestamp: new Date().toISOString(), location: 'Warehouse', completed: true },
+        { status: 'confirmed' as any, timestamp: '', location: 'Processing', completed: false },
+        { status: 'shipped' as any, timestamp: '', location: 'Logistics', completed: false },
+        { status: 'delivered' as any, timestamp: '', location: 'Customer', completed: false },
       ]
     };
-    
     db.placeOrderTransaction(orderWithSteps as any, products);
     if (!buyNowItem) clearCart();
     setBuyNowItem(null);
@@ -307,39 +293,21 @@ const App: React.FC = () => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
-  // Bifurcation logic for rendering portals
   const renderPortal = () => {
     if (!hasConfirmedLanguage) return <LanguageSelectionView />;
     if (!role) return <LandingView onSelectRole={setRole} />;
 
-    if (role === UserRole.MERCHANT) {
-      // Merchant Portal View Logic
-      switch (currentView) {
-        case 'orders': return <OrderManagement />;
-        case 'products': return <ProductManagement />;
-        case 'add-product': return <AddProduct />;
-        case 'finance': return <EarningsView />;
-        case 'settings': return <BusinessSettings />;
-        case 'marketing': return <MarketingView />;
-        case 'customers': return <CustomerManagement />;
-        case 'ai-hub': return <AIHub />;
-        case 'home':
-        default: return <MerchantDashboard />;
-      }
-    } else {
-      // Customer Portal View Logic
-      switch (currentView) {
-        case 'product-detail': return <ProductDetail />;
-        case 'cart': return <CartView />;
-        case 'checkout': return <CheckoutView />;
-        case 'profile': return <ProfileView />;
-        case 'tracking': return <OrderTracking />;
-        case 'support': return <SupportView />;
-        case 'notifications': return <NotificationView />;
-        case 'ai-hub': return <AIHub />;
-        case 'home':
-        default: return <CustomerHome />;
-      }
+    switch (currentView) {
+      case 'product-detail': return <ProductDetail />;
+      case 'cart': return <CartView />;
+      case 'checkout': return <CheckoutView />;
+      case 'profile': return <ProfileView />;
+      case 'tracking': return <OrderTracking />;
+      case 'support': return <SupportView />;
+      case 'notifications': return <NotificationView />;
+      case 'ai-hub': return <AIHub />;
+      case 'home':
+      default: return <CustomerHome />;
     }
   };
 
@@ -350,16 +318,15 @@ const App: React.FC = () => {
       products, addProduct, updateProduct, cart, addToCart, updateCartQty, removeFromCart, clearCart,
       wishlist, toggleWishlist, t, currentView, setView, goBack,
       selectedProduct, setSelectedProduct, productToEdit, setProductToEdit, orders, updateOrderStatus, placeOrder,
-      businessInfo, updateBusinessInfo, payouts,
       recentlyViewed, notifications, markAsRead, selectedOrder, setSelectedOrder,
-      buyNowItem, setBuyNowItem
+      buyNowItem, setBuyNowItem, businessInfo, payouts
     }}>
-      <div className={`h-full flex flex-col overflow-hidden transition-colors duration-500 ${role === UserRole.MERCHANT ? 'bg-[#F3F4F4]' : 'bg-[#F3F4F4]'}`}>
+      <div className="h-full flex flex-col overflow-hidden bg-[#F3F4F4]">
         {role && <Header />}
         
         {role && (
           <motion.div
-            className={`fixed top-14 left-0 right-0 h-1 origin-left z-50 ${role === UserRole.MERCHANT ? 'bg-[#1D546D]' : 'bg-[#5F9598]'}`}
+            className="fixed top-14 left-0 right-0 h-1 origin-left z-50 bg-[#5F9598]"
             style={{ scaleX }}
           />
         )}
@@ -371,7 +338,7 @@ const App: React.FC = () => {
         >
           <AnimatePresence mode="wait">
             <motion.div
-              key={!hasConfirmedLanguage ? 'lang-select' : role ? (role + currentView) : 'landing'}
+              key={!hasConfirmedLanguage ? 'lang-select' : role ? currentView : 'landing'}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}

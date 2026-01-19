@@ -11,6 +11,37 @@ import {
 } from 'lucide-react';
 import { db, TableName } from '../db';
 
+// Manual Base64 decoding following guidelines
+function decode(base64: string) {
+  const binaryString = atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Manual PCM audio decoding for Live API following guidelines
+async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
 const AIHub: React.FC = () => {
   const { language, t } = useApp();
   const [activeTab, setActiveTab] = useState<'chat' | 'vision' | 'create' | 'voice' | 'db'>('chat');
@@ -28,7 +59,6 @@ const AIHub: React.FC = () => {
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [imageSize, setImageSize] = useState('1K');
-  const [uploadRefImg, setUploadRefImg] = useState<string | null>(null);
 
   // Vision State
   const [visionImg, setVisionImg] = useState<string | null>(null);
@@ -38,6 +68,8 @@ const AIHub: React.FC = () => {
   const [isLive, setIsLive] = useState(false);
   const [transcription, setTranscription] = useState('');
   const liveSessionRef = useRef<any>(null);
+  const nextStartTimeRef = useRef<number>(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   // DB Explorer State
   const [selectedTable, setSelectedTable] = useState<TableName>('products');
@@ -49,9 +81,18 @@ const AIHub: React.FC = () => {
     return unsubscribe;
   }, []);
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (liveSessionRef.current) liveSessionRef.current.close();
+      if (audioContextRef.current) audioContextRef.current.close();
+    };
+  }, []);
+
   const checkApiKey = async () => {
     if (!(window as any).aistudio?.hasSelectedApiKey || !(await (window as any).aistudio.hasSelectedApiKey())) {
       await (window as any).aistudio?.openSelectKey();
+      // Assume selection successful following race condition mitigation rules
     }
   };
 
@@ -115,9 +156,14 @@ const AIHub: React.FC = () => {
         }
       });
       
-      const part = response.candidates[0].content.parts.find(p => p.inlineData);
-      if (part?.inlineData) {
-        setGeneratedImage(`data:image/png;base64,${part.inlineData.data}`);
+      // Iterate over parts to find the image following guidelines
+      for (const candidate of response.candidates || []) {
+        for (const part of candidate.content.parts) {
+          if (part.inlineData) {
+            setGeneratedImage(`data:image/png;base64,${part.inlineData.data}`);
+            return;
+          }
+        }
       }
     } catch (e) {
       console.error(e);
@@ -173,24 +219,62 @@ const AIHub: React.FC = () => {
       setIsLive(false);
       return;
     }
+
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+    }
+
     setIsLive(true);
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    liveSessionRef.current = await ai.live.connect({
+    
+    // Live session connect follows sessionPromise pattern conceptually to ensure proper sequence
+    const sessionPromise = ai.live.connect({
       model: 'gemini-2.5-flash-native-audio-preview-12-2025',
       callbacks: {
         onopen: () => console.log('Live connected'),
         onmessage: async (msg: LiveServerMessage) => {
+          // Handle transcriptions
           if (msg.serverContent?.outputTranscription) {
             setTranscription(prev => prev + ' ' + msg.serverContent!.outputTranscription!.text);
           }
-        }
+
+          // Handle audio output from model turn following gapless playback rules
+          const audioBase64 = msg.serverContent?.modelTurn?.parts?.[0]?.inlineData?.data;
+          if (audioBase64 && audioContextRef.current) {
+            const ctx = audioContextRef.current;
+            nextStartTimeRef.current = Math.max(nextStartTimeRef.current, ctx.currentTime);
+            
+            try {
+              const audioBuffer = await decodeAudioData(decode(audioBase64), ctx, 24000, 1);
+              const source = ctx.createBufferSource();
+              source.buffer = audioBuffer;
+              source.connect(ctx.destination);
+              source.start(nextStartTimeRef.current);
+              nextStartTimeRef.current += audioBuffer.duration;
+            } catch (err) {
+              console.error("Audio playback error:", err);
+            }
+          }
+
+          if (msg.serverContent?.interrupted) {
+            nextStartTimeRef.current = 0;
+            // Additional logic to stop current playback could go here if tracking active sources
+          }
+        },
+        onerror: (e) => console.error("Live Error", e),
+        onclose: () => setIsLive(false)
       },
       config: {
         responseModalities: [Modality.AUDIO],
         outputAudioTranscription: {},
-        inputAudioTranscription: {}
+        inputAudioTranscription: {},
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
+        }
       }
     });
+
+    liveSessionRef.current = await sessionPromise;
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, setter: (s: string) => void) => {

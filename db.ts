@@ -1,13 +1,12 @@
 
-import { Product, Order, MerchantBusinessInfo, Payout, UserRole, Language, UserProfile } from './types';
+import { Product, Order, Language, UserProfile } from './types';
 import { MOCK_PRODUCTS } from './constants';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Supabase Configuration from user details
 const SUPABASE_URL = 'https://ijkcwcipeutbidtyldva.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_h1EASqXlVZZJEh80fqXdhA_MdRWj-N-';
 
-export type TableName = 'products' | 'orders' | 'merchants' | 'coupons' | 'payouts' | 'settings' | 'customers';
+export type TableName = 'products' | 'orders' | 'customers';
 
 type DBChangeCallback = (table: TableName) => void;
 
@@ -24,8 +23,6 @@ class DBService {
         this.notifyListeners(event.data.table);
       }
     };
-    
-    // Initialize Supabase Client
     this.supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
   }
 
@@ -51,52 +48,8 @@ class DBService {
 
   async init() {
     const existingProducts = this.getTable<Product>('products');
-    if (existingProducts.length < 150) {
+    if (existingProducts.length < 1) {
       this.saveTable('products', MOCK_PRODUCTS);
-    }
-    
-    if (!localStorage.getItem(this.prefix + 'merchants')) {
-      this.saveTable('merchants', [{
-        id: 'm1',
-        storeName: 'shaileshbhai no nasto',
-        ownerName: 'Shaileshbhai',
-        gstNumber: '',
-        kycStatus: 'unverified',
-        fulfillmentType: 'SELLER_FULFILLED',
-        bankAccount: { accountNumber: '', ifsc: '', bankName: '' },
-        metrics: { orderDefectRate: 0, cancellationRate: 0, lateShipmentRate: 0 }
-      }]);
-    }
-
-    // Pull products from 'merchant' table in Supabase
-    try {
-      const { data, error } = await this.supabase
-        .from('merchant')
-        .select('*');
-
-      if (!error && data && data.length > 0) {
-        // Map Supabase 'merchant' columns back to local Product type
-        const cloudProducts: Product[] = data.map(row => ({
-          id: row.id || Math.random().toString(),
-          sku: row.sku || 'SKU_AUTO',
-          brand: row.brand || 'Merchant',
-          title: row.product_name as Record<Language, string>,
-          description: row.description || { en: '' },
-          price: row.base_price,
-          image: row.product_photo,
-          category: row.category,
-          stock: row.stock,
-          rating: 5,
-          reviews: [],
-          merchantId: 'm1',
-          status: 'active',
-          fulfillmentMode: 'SELLER_FULFILLED',
-          variants: row.variants_data || []
-        }));
-        this.saveTable('products', cloudProducts);
-      }
-    } catch (e) {
-      console.warn("Supabase Product Sync Failed.", e);
     }
   }
 
@@ -116,43 +69,18 @@ class DBService {
     const data = this.getTable<T>(table);
     const index = data.findIndex(i => i.id === id);
     if (index === -1) return null;
-    
     const updated = { ...data[index], ...updates };
     data[index] = updated;
     this.saveTable(table, data);
     return updated;
   }
 
-  // Cloud Sync for Merchant Table (Products)
-  async syncProductToCloud(product: Product) {
-    try {
-      const { error } = await this.supabase
-        .from('merchant')
-        .upsert({
-          id: product.id,
-          product_photo: product.image,
-          product_name: product.title,
-          category: product.category,
-          has_variants: !!(product.variants && product.variants.length > 0),
-          base_price: product.price,
-          stock: product.stock,
-          is_available: product.stock > 0,
-          sku: product.sku,
-          brand: product.brand,
-          variants_data: product.variants || []
-        });
-      if (error) throw error;
-      console.log("Supabase Merchant Table: Product synced successfully.");
-    } catch (e) {
-      console.error("Cloud Merchant Sync Error:", e);
-    }
-  }
-
-  // Cloud Sync for Customer Table
+  // Sync customer profile to cloud
   async syncCustomerToCloud(profile: UserProfile) {
     try {
+      // FIX: Changed from 'customer' to 'customers' to match TableName and schema convention
       const { error } = await this.supabase
-        .from('customer')
+        .from('customers')
         .upsert({
           id: profile.id,
           name: profile.name,
@@ -162,9 +90,34 @@ class DBService {
           last_active: new Date().toISOString()
         });
       if (error) throw error;
-      console.log("Supabase Customer Table: Profile synced successfully.");
-    } catch (e) {
-      console.error("Cloud Customer Sync Error:", e);
+    } catch (e: any) {
+      console.error("Cloud Customer Sync Error: " + (e?.message || JSON.stringify(e) || "Unknown error"));
+    }
+  }
+
+  // FIX: Added missing syncProductToCloud method to DBService
+  async syncProductToCloud(product: Product) {
+    try {
+      const { error } = await this.supabase
+        .from('products')
+        .upsert({
+          id: product.id,
+          sku: product.sku,
+          brand: product.brand,
+          title: product.title,
+          description: product.description,
+          price: product.price,
+          image: product.image,
+          category: product.category,
+          stock: product.stock,
+          rating: product.rating,
+          merchant_id: product.merchantId,
+          fulfillment_mode: product.fulfillmentMode,
+          updated_at: new Date().toISOString()
+        });
+      if (error) throw error;
+    } catch (e: any) {
+      console.error("Cloud Product Sync Error: " + (e?.message || JSON.stringify(e) || "Unknown error"));
     }
   }
 
@@ -175,14 +128,13 @@ class DBService {
       if (product) {
         const newStock = Math.max(0, product.stock - item.quantity);
         this.update<Product>('products', product.id, { stock: newStock });
-        this.syncProductToCloud({ ...product, stock: newStock }); // Sync inventory update
       }
     });
 
     try {
       await this.supabase.from('orders').insert([order]);
-    } catch (e) {
-      console.error("Order cloud sync failed", e);
+    } catch (e: any) {
+      console.error("Order cloud sync failed: " + (e?.message || JSON.stringify(e)));
     }
   }
   

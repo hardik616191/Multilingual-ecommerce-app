@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../App';
-import { Search, Star, Filter, Heart, Plus, Tag, TrendingUp, Clock, Bell } from 'lucide-react';
+import { Search, Star, Filter, Heart, Plus, TrendingUp, Clock, Bell } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const CustomerHome: React.FC = () => {
@@ -54,9 +54,6 @@ const CustomerHome: React.FC = () => {
               <Bell size={18} />
               {unreadCount > 0 && <span className="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full"></span>}
             </button>
-            <div className="w-10 h-10 bg-white rounded-2xl shadow-sm border border-[#1D546D]/5 flex items-center justify-center text-[#061E29]">
-              <Filter size={18} />
-            </div>
           </div>
         </div>
 
@@ -70,22 +67,6 @@ const CustomerHome: React.FC = () => {
             className="w-full pl-11 pr-4 py-4 rounded-[1.5rem] bg-white border border-[#1D546D]/10 focus:ring-2 focus:ring-[#5F9598] outline-none text-sm shadow-sm placeholder-[#1D546D]/30 text-[#061E29]"
           />
         </div>
-      </motion.div>
-
-      {/* Hero Banner */}
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        whileInView={{ opacity: 1, scale: 1 }}
-        viewport={{ once: true }}
-        className="bg-[#061E29] p-6 rounded-[2.5rem] text-white flex items-center justify-between relative overflow-hidden shadow-xl"
-      >
-        <div className="relative z-10 space-y-2">
-          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#5F9598]">Featured Store</span>
-          <h3 className="text-xl font-bold">New Collections</h3>
-          <p className="text-xs text-[#5F9598] font-bold">Discover the latest in tech & fashion</p>
-          <button onClick={() => setView('home')} className="bg-[#5F9598] text-[#061E29] text-[10px] font-black uppercase px-4 py-2 rounded-xl mt-2">Explore Now</button>
-        </div>
-        <TrendingUp size={64} className="text-[#1D546D] opacity-20 absolute -right-2 top-0" />
       </motion.div>
 
       {/* Categories Bar */}
@@ -140,7 +121,7 @@ const CustomerHome: React.FC = () => {
       )}
 
       {/* Trending Now / Grid */}
-      <section className="space-y-4">
+      <section className="space-y-4 px-1">
         <h3 className="text-base font-black text-[#061E29] uppercase tracking-wider flex items-center gap-2 px-1">
           <TrendingUp size={16} className="text-[#5F9598]" /> {t('trendingNow')}
         </h3>
@@ -149,41 +130,44 @@ const CustomerHome: React.FC = () => {
           whileInView="visible"
           viewport={{ once: true, margin: "-20px" }}
           variants={containerVariants}
-          className="grid grid-cols-2 gap-4"
+          className="grid grid-cols-4 gap-4"
         >
-          {filteredProducts.slice(0, 20).map(product => {
+          {filteredProducts.slice(0, 40).map(product => {
             const isLiked = wishlist.includes(product.id);
             return (
               <motion.div 
                 variants={itemVariants}
                 whileTap={{ scale: 0.98 }}
-                whileHover={{ y: -8, boxShadow: "0 20px 25px -5px rgba(29, 84, 109, 0.15)" }}
                 key={product.id} 
-                className="bg-white rounded-[2rem] shadow-sm border border-[#1D546D]/5 overflow-hidden flex flex-col relative transition-all duration-300"
+                className="bg-white rounded-[1rem] shadow-sm border border-[#1D546D]/5 overflow-hidden flex flex-col relative transition-all duration-300 h-full"
               >
                 <div className="relative aspect-square cursor-pointer" onClick={() => { setSelectedProduct(product); setView('product-detail', true, true); }}>
                   <img 
                     src={product.image} 
                     className="w-full h-full object-cover" 
+                    alt=""
                   />
                   <button 
                     onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
-                    className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md transition-all z-10 ${
+                    className={`absolute top-1 right-1 p-1 rounded-full backdrop-blur-md transition-all z-10 ${
                       isLiked ? 'bg-rose-500 text-white shadow-lg' : 'bg-white/80 text-[#1D546D]'
                     }`}
                   >
-                    <Heart size={14} fill={isLiked ? "currentColor" : "none"} />
+                    <Heart size={10} fill={isLiked ? "currentColor" : "none"} />
                   </button>
                 </div>
-                <div className="p-3">
-                  <h4 className="font-bold text-[#061E29] text-xs line-clamp-1">{product.title[language]}</h4>
-                  <div className="flex items-center gap-1 text-[9px] text-[#5F9598] font-bold mt-1">
-                    <Star size={10} className="fill-[#5F9598]" /> {product.rating.toFixed(1)}
+                <div className="p-1.5 flex flex-col flex-grow">
+                  <h4 className="font-bold text-[#061E29] text-[9px] line-clamp-2 leading-tight min-h-[1.75em]">{product.title[language]}</h4>
+                  <div className="flex items-center gap-0.5 text-[8px] text-[#5F9598] font-bold mt-0.5">
+                    <Star size={8} className="fill-[#5F9598]" /> {product.rating.toFixed(1)}
                   </div>
-                  <div className="mt-2 flex items-center justify-between">
-                    <span className="text-sm font-black text-[#061E29]">₹{product.price}</span>
-                    <button className="w-8 h-8 bg-[#061E29] text-white rounded-xl flex items-center justify-center active:scale-75 transition-transform">
-                      <Plus size={16} />
+                  <div className="mt-auto pt-1 flex items-center justify-between">
+                    <span className="text-[10px] font-black text-[#061E29]">₹{product.price}</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); }}
+                      className="w-5 h-5 bg-[#061E29] text-white rounded-lg flex items-center justify-center active:scale-75 transition-transform"
+                    >
+                      <Plus size={12} />
                     </button>
                   </div>
                 </div>
@@ -192,14 +176,6 @@ const CustomerHome: React.FC = () => {
           })}
         </motion.div>
       </section>
-      
-      <div className="py-12 flex justify-center opacity-30">
-        <div className="flex gap-2">
-          <motion.span animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0 }} className="w-2 h-2 bg-[#1D546D] rounded-full"></motion.span>
-          <motion.span animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.2 }} className="w-2 h-2 bg-[#1D546D] rounded-full"></motion.span>
-          <motion.span animate={{ scale: [1, 1.5, 1], opacity: [0.3, 1, 0.3] }} transition={{ repeat: Infinity, duration: 1, delay: 0.4 }} className="w-2 h-2 bg-[#1D546D] rounded-full"></motion.span>
-        </div>
-      </div>
     </div>
   );
 };

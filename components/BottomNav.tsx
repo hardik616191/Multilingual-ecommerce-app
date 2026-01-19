@@ -1,30 +1,20 @@
 
 import React from 'react';
 import { useApp } from '../App';
-import { UserRole } from '../types';
 import { motion } from 'framer-motion';
-import { Home, Package, ShoppingCart, User, PlusCircle, LayoutDashboard, ListOrdered, Wallet, Settings, Sparkles } from 'lucide-react';
+import { Home, ShoppingCart, User, Sparkles } from 'lucide-react';
 
 const BottomNav: React.FC = () => {
-  const { currentView, setView, role, t, cart, orders } = useApp();
+  const { currentView, setView, t, cart } = useApp();
   
   const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
-  const pendingOrders = orders.filter(o => o.status === 'pending').length;
 
-  const tabs = role === UserRole.MERCHANT 
-    ? [
-        { id: 'home', icon: LayoutDashboard, label: t('merchantDash') },
-        { id: 'orders', icon: ListOrdered, label: t('orders'), badge: pendingOrders },
-        { id: 'ai-hub', icon: Sparkles, label: 'Magic' },
-        { id: 'products', icon: Package, label: t('inventory') },
-        { id: 'settings', icon: Settings, label: t('profile') },
-      ]
-    : [
-        { id: 'home', icon: Home, label: t('customerHome') },
-        { id: 'ai-hub', icon: Sparkles, label: 'Magic' },
-        { id: 'cart', icon: ShoppingCart, label: t('cart'), badge: cartCount },
-        { id: 'profile', icon: User, label: t('profile') },
-      ];
+  const tabs = [
+    { id: 'home', icon: Home, label: t('customerHome') },
+    { id: 'ai-hub', icon: Sparkles, label: 'Magic' },
+    { id: 'cart', icon: ShoppingCart, label: t('cart'), badge: cartCount },
+    { id: 'profile', icon: User, label: t('profile') },
+  ];
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-[#061E29] border-t border-[#1D546D]/20 z-50 safe-area-bottom">
