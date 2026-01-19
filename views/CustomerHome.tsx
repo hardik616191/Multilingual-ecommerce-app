@@ -18,8 +18,6 @@ const CustomerHome: React.FC = () => {
     return matchesSearch && matchesCat;
   });
 
-  const trending = products.slice(0, 12).sort((a, b) => b.rating - a.rating);
-
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -74,7 +72,7 @@ const CustomerHome: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Hero Banner - No discounts */}
+      {/* Hero Banner */}
       <motion.div 
         initial={{ opacity: 0, scale: 0.95 }}
         whileInView={{ opacity: 1, scale: 1 }}
@@ -90,7 +88,7 @@ const CustomerHome: React.FC = () => {
         <TrendingUp size={64} className="text-[#1D546D] opacity-20 absolute -right-2 top-0" />
       </motion.div>
 
-      {/* Sticky Categories Bar with snap scrolling */}
+      {/* Categories Bar */}
       <div className="sticky top-0 z-40 -mx-4 px-4 py-2 bg-[#F3F4F4]/90 backdrop-blur-md">
         <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-hide snap-carousel">
           {cats.map(cat => (
@@ -107,7 +105,7 @@ const CustomerHome: React.FC = () => {
         </div>
       </div>
 
-      {/* Recently Viewed Snap Scroll */}
+      {/* Recently Viewed */}
       {recentlyViewed.length > 0 && (
         <motion.section 
           initial={{ opacity: 0 }}
@@ -123,17 +121,18 @@ const CustomerHome: React.FC = () => {
               const p = products.find(prod => prod.id === id);
               if (!p) return null;
               return (
-                <div 
+                <motion.div 
                   key={id} 
+                  whileHover={{ y: -5 }}
                   onClick={() => { setSelectedProduct(p); setView('product-detail', true, true); }}
-                  className="min-w-[90px] text-center space-y-2 snap-item active:scale-90 transition-transform cursor-pointer"
+                  className="min-w-[90px] text-center space-y-2 snap-item transition-all cursor-pointer"
                 >
                   <div className="relative">
                     <img src={p.image} className="w-20 h-20 object-cover rounded-full border-2 border-white shadow-md mx-auto" alt="" />
                     <div className="absolute inset-0 rounded-full bg-[#061E29]/5"></div>
                   </div>
                   <p className="text-[9px] font-bold text-[#1D546D] truncate">{p.title[language]}</p>
-                </div>
+                </motion.div>
               );
             })}
           </div>
@@ -158,13 +157,14 @@ const CustomerHome: React.FC = () => {
               <motion.div 
                 variants={itemVariants}
                 whileTap={{ scale: 0.98 }}
+                whileHover={{ y: -8, boxShadow: "0 20px 25px -5px rgba(29, 84, 109, 0.15)" }}
                 key={product.id} 
-                className="bg-white rounded-[2rem] shadow-sm border border-[#1D546D]/5 overflow-hidden flex flex-col relative"
+                className="bg-white rounded-[2rem] shadow-sm border border-[#1D546D]/5 overflow-hidden flex flex-col relative transition-all duration-300"
               >
                 <div className="relative aspect-square cursor-pointer" onClick={() => { setSelectedProduct(product); setView('product-detail', true, true); }}>
                   <img 
                     src={product.image} 
-                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" 
+                    className="w-full h-full object-cover" 
                   />
                   <button 
                     onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}

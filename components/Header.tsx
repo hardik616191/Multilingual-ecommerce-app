@@ -1,34 +1,40 @@
 
 import React from 'react';
 import { useApp } from '../App';
-import { Language } from '../types';
-import { Globe, LogOut, Radio } from 'lucide-react';
+import { Language, UserRole } from '../types';
+import { Globe, LogOut, Radio, Store, ShoppingBag } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { language, setLanguage, setRole, setView } = useApp();
+  const { language, setLanguage, setRole, setView, role, t } = useApp();
+
+  const isMerchant = role === UserRole.MERCHANT;
 
   return (
-    <header className="bg-[#061E29] text-white border-b border-[#1D546D]/20 sticky top-0 z-50 pt-[env(safe-area-inset-top)]">
+    <header className={`${isMerchant ? 'bg-[#061E29]' : 'bg-white text-[#061E29]'} border-b border-[#1D546D]/10 sticky top-0 z-50 pt-[env(safe-area-inset-top)] transition-colors duration-500`}>
       <div className="container mx-auto px-4 h-14 flex items-center justify-between">
         <div 
           className="flex items-center gap-2 cursor-pointer" 
           onClick={() => setView('home')}
         >
-          <div className="w-8 h-8 bg-[#5F9598] rounded-lg flex items-center justify-center shadow-md">
-            <span className="text-[#061E29] font-bold text-sm">S</span>
+          <div className={`w-8 h-8 ${isMerchant ? 'bg-[#5F9598]' : 'bg-[#061E29]'} rounded-lg flex items-center justify-center shadow-md transition-colors`}>
+            {isMerchant ? <Store size={16} className="text-[#061E29]" /> : <ShoppingBag size={16} className="text-white" />}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-tight leading-none">shaileshbhai</span>
+            <span className="text-sm font-black tracking-tight leading-none uppercase">
+              {isMerchant ? 'Merchant Center' : 'shaileshbhai'}
+            </span>
             <div className="flex items-center gap-1 mt-0.5">
-              <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></div>
-              <span className="text-[7px] font-black uppercase text-[#5F9598] tracking-widest">Live Sync</span>
+              <div className={`w-1 h-1 ${isMerchant ? 'bg-emerald-500' : 'bg-[#5F9598]'} rounded-full animate-pulse`}></div>
+              <span className={`text-[7px] font-black uppercase tracking-widest ${isMerchant ? 'text-[#5F9598]' : 'text-[#1D546D]/50'}`}>
+                {isMerchant ? 'Business Hub' : 'Fresh Daily'}
+              </span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <div className="relative group">
-            <button className="flex items-center gap-1.5 text-white bg-[#1D546D] px-3 py-1.5 rounded-full transition-all text-xs font-bold uppercase active:scale-95">
+            <button className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all text-xs font-bold uppercase active:scale-95 ${isMerchant ? 'bg-[#1D546D] text-white' : 'bg-[#F3F4F4] text-[#1D546D]'}`}>
               <Globe size={14} />
               {language}
             </button>
@@ -41,7 +47,7 @@ const Header: React.FC = () => {
 
           <button 
             onClick={() => setRole(null)}
-            className="p-2 text-[#5F9598] hover:text-white active:scale-90 transition-all"
+            className={`p-2 transition-all active:scale-90 ${isMerchant ? 'text-[#5F9598]' : 'text-[#1D546D]/30'}`}
           >
             <LogOut size={20} />
           </button>

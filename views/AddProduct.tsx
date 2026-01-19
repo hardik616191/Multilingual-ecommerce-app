@@ -1,10 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../App';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Upload, CheckCircle, Package, Tag, IndianRupee, Layers, Plus, Trash2, Sparkles, Loader2 } from 'lucide-react';
 import { Language, Product, ProductVariant } from '../types';
 import { GoogleGenAI } from "@google/genai";
+import { db } from '../db';
 
 const AddProduct: React.FC = () => {
   const { t, setView, addProduct, updateProduct, productToEdit, setProductToEdit } = useApp();
@@ -12,6 +13,7 @@ const AddProduct: React.FC = () => {
   const [generatingImage, setGeneratingImage] = useState(false);
   const [success, setSuccess] = useState(false);
   const [hasVariants, setHasVariants] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     nameEn: '', nameHi: '', nameGu: '',
@@ -45,6 +47,26 @@ const AddProduct: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setFormData(prev => ({
+            ...prev,
+            imageUrl: event.target?.result as string
+          }));
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileUpload = () => {
+    fileInputRef.current?.click();
   };
 
   const handleGenerateAIImage = async () => {
@@ -91,7 +113,7 @@ const AddProduct: React.FC = () => {
     setVariants(prev => prev.filter(v => v.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
@@ -121,14 +143,16 @@ const AddProduct: React.FC = () => {
       variants: hasVariants ? variants as ProductVariant[] : undefined
     };
 
-    setTimeout(() => {
-      if (productToEdit) updateProduct(productData);
-      else addProduct(productData);
-      setLoading(false);
-      setSuccess(true);
-      setProductToEdit(null);
-      setTimeout(() => setView('products'), 1500);
-    }, 1000);
+    if (productToEdit) updateProduct(productData);
+    else addProduct(productData);
+
+    // Sync to Supabase Merchant Table
+    await db.syncProductToCloud(productData);
+
+    setLoading(false);
+    setSuccess(true);
+    setProductToEdit(null);
+    setTimeout(() => setView('products'), 1500);
   };
 
   if (success) {
@@ -151,10 +175,29 @@ const AddProduct: React.FC = () => {
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="bg-white p-4 rounded-3xl border border-[#1D546D]/10 shadow-sm space-y-4">
-          <div className="relative aspect-video bg-[#F3F4F4] border-2 border-dashed border-[#1D546D]/20 rounded-2xl flex items-center justify-center p-4">
-            {generatingImage ? <Loader2 className="animate-spin text-[#5F9598]" /> : formData.imageUrl ? <img src={formData.imageUrl} className="w-full h-full object-cover rounded-xl" /> : <Upload size={32} className="text-[#1D546D]/30" />}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept="image/*" 
+            onChange={handleFileChange} 
+          />
+          <div 
+            onClick={triggerFileUpload}
+            className="relative aspect-video bg-[#F3F4F4] border-2 border-dashed border-[#1D546D]/20 rounded-2xl flex items-center justify-center p-4 cursor-pointer overflow-hidden active:scale-[0.98] transition-all"
+          >
+            {generatingImage ? (
+              <Loader2 className="animate-spin text-[#5F9598]" />
+            ) : formData.imageUrl ? (
+              <img src={formData.imageUrl} className="w-full h-full object-cover rounded-xl" />
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <Upload size={32} className="text-[#1D546D]/30" />
+                <span className="text-[10px] font-bold text-[#1D546D]/30 uppercase tracking-widest">Tap to Upload</span>
+              </div>
+            )}
           </div>
-          <button type="button" onClick={handleGenerateAIImage} className="w-full py-3 bg-[#061E29] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+          <button type="button" onClick={handleGenerateAIImage} className="w-full py-3 bg-[#061E29] text-white rounded-xl text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2 active:bg-[#1D546D] transition-colors">
             <Sparkles size={14} /> Generate AI Photo
           </button>
         </div>
@@ -162,11 +205,11 @@ const AddProduct: React.FC = () => {
         <div className="bg-white p-5 rounded-3xl border border-[#1D546D]/10 space-y-4">
             <div>
               <label className="block text-[10px] font-bold text-[#1D546D] uppercase mb-1">Product Name</label>
-              <input required name="nameEn" value={formData.nameEn} onChange={handleInputChange} className="w-full px-4 py-3 bg-[#F3F4F4] rounded-2xl outline-none text-sm" />
+              <input required name="nameEn" value={formData.nameEn} onChange={handleInputChange} className="w-full px-4 py-3 bg-[#F3F4F4] rounded-2xl outline-none text-sm font-medium" />
             </div>
             <div>
               <label className="block text-[10px] font-bold text-[#1D546D] uppercase mb-1">Category</label>
-              <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-4 py-3 bg-[#F3F4F4] rounded-2xl outline-none text-sm">
+              <select name="category" value={formData.category} onChange={handleInputChange} className="w-full px-4 py-3 bg-[#F3F4F4] rounded-2xl outline-none text-sm font-medium">
                 <option value="Clothing">Clothing</option>
                 <option value="Electronics">Electronics</option>
                 <option value="Foods">Foods</option>
@@ -208,7 +251,7 @@ const AddProduct: React.FC = () => {
             </div>
         </div>
 
-        <button type="submit" disabled={loading} className="w-full py-4 bg-[#5F9598] text-[#061E29] rounded-2xl font-bold shadow-xl flex items-center justify-center gap-2">
+        <button type="submit" disabled={loading} className="w-full py-4 bg-[#5F9598] text-[#061E29] rounded-2xl font-bold shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
           {loading ? <Loader2 className="animate-spin" /> : t('save')}
         </button>
       </form>

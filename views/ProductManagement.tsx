@@ -105,9 +105,10 @@ const ProductManagement: React.FC = () => {
           return (
             <motion.div 
               variants={itemVariants}
+              whileHover={{ scale: 1.02, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)" }}
               layout
               key={product.id}
-              className="bg-white p-4 rounded-[2rem] border border-[#1D546D]/5 shadow-sm space-y-4"
+              className="bg-white p-4 rounded-[2rem] border border-[#1D546D]/5 shadow-sm space-y-4 transition-all duration-300"
             >
               <div className="flex gap-4">
                 <div className="relative flex-shrink-0">
@@ -136,11 +137,11 @@ const ProductManagement: React.FC = () => {
               <div className="flex gap-2 pt-2 border-t border-[#1D546D]/5">
                 <button 
                   onClick={() => handleEdit(product)}
-                  className="flex-1 py-3 bg-[#F3F4F4] rounded-xl text-[10px] font-black uppercase text-[#061E29] flex items-center justify-center gap-2"
+                  className="flex-1 py-3 bg-[#F3F4F4] rounded-xl text-[10px] font-black uppercase text-[#061E29] flex items-center justify-center gap-2 active:bg-gray-200 transition-colors"
                 >
                    <Edit2 size={12}/> {t('editProduct')}
                 </button>
-                <button className="flex-1 py-3 bg-[#F3F4F4] rounded-xl text-[10px] font-black uppercase text-[#061E29] flex items-center justify-center gap-2">
+                <button className="flex-1 py-3 bg-[#F3F4F4] rounded-xl text-[10px] font-black uppercase text-[#061E29] flex items-center justify-center gap-2 active:bg-gray-200 transition-colors">
                    <BarChart3 size={12}/> Analytics
                 </button>
               </div>

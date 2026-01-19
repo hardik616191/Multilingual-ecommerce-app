@@ -31,8 +31,9 @@ const ProfileView: React.FC = () => {
         {menu.map((item) => (
           <motion.div 
             whileTap={{ scale: 0.98 }}
+            whileHover={{ x: 5, backgroundColor: "rgba(255, 255, 255, 0.8)" }}
             key={item.id}
-            className="bg-white p-4 rounded-[2rem] border border-[#1D546D]/5 flex items-center gap-4 shadow-sm"
+            className="bg-white p-4 rounded-[2rem] border border-[#1D546D]/5 flex items-center gap-4 shadow-sm cursor-pointer transition-colors"
           >
             <div className="p-3 bg-[#F3F4F4] rounded-2xl text-[#061E29]">
               <item.icon size={20} />
@@ -50,7 +51,11 @@ const ProfileView: React.FC = () => {
         <div className="mt-8 space-y-4 px-2">
           <h3 className="text-sm font-bold text-[#1D546D] uppercase tracking-widest">Recent Orders</h3>
           {orders.map(o => (
-            <div key={o.id} className="bg-white p-4 rounded-3xl border border-[#1D546D]/10">
+            <motion.div 
+              whileHover={{ y: -4, boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.05)" }}
+              key={o.id} 
+              className="bg-white p-4 rounded-3xl border border-[#1D546D]/10 transition-all duration-300"
+            >
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs font-bold text-[#061E29]">ID: #{o.id}</span>
                 <span className="text-[10px] font-bold uppercase px-2 py-0.5 bg-[#5F9598]/20 text-[#5F9598] rounded-full">{o.status}</span>
@@ -59,7 +64,7 @@ const ProfileView: React.FC = () => {
                 <span className="text-xs text-[#1D546D]">{new Date(o.date).toLocaleDateString()}</span>
                 <span className="text-sm font-bold text-[#061E29]">₹{o.total}</span>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

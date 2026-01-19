@@ -108,6 +108,21 @@ const App: React.FC = () => {
   });
   const [businessInfo, setBusinessInfo] = useState<MerchantBusinessInfo>(() => db.select<MerchantBusinessInfo>('merchants')[0]);
 
+  // Sync customer to Supabase when role or language changes
+  useEffect(() => {
+    if (role === UserRole.CUSTOMER) {
+      const profile: UserProfile = {
+        id: 'u1', // Simplified ID for mock user
+        name: 'Jatin Kumar',
+        email: 'jatin.k@example.com',
+        role: UserRole.CUSTOMER,
+        language: language
+      };
+      setUser(profile);
+      db.syncCustomerToCloud(profile);
+    }
+  }, [role, language]);
+
   useEffect(() => {
     const unsubscribe = db.subscribe((table: TableName) => {
       console.log(`Real-time Sync: Hydrating ${table}`);
@@ -153,8 +168,14 @@ const App: React.FC = () => {
   }, [hasConfirmedLanguage]);
 
   useEffect(() => {
-    if (role) localStorage.setItem('shaileshbhai_role', role);
-    else localStorage.removeItem('shaileshbhai_role');
+    if (role) {
+      localStorage.setItem('shaileshbhai_role', role);
+      // Reset view when switching roles to ensure portal isolation
+      setCurrentView('home');
+      setViewStack([]);
+    } else {
+      localStorage.removeItem('shaileshbhai_role');
+    }
   }, [role]);
 
   useEffect(() => {
@@ -286,10 +307,13 @@ const App: React.FC = () => {
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
   };
 
-  const renderViewContent = () => {
+  // Bifurcation logic for rendering portals
+  const renderPortal = () => {
     if (!hasConfirmedLanguage) return <LanguageSelectionView />;
     if (!role) return <LandingView onSelectRole={setRole} />;
+
     if (role === UserRole.MERCHANT) {
+      // Merchant Portal View Logic
       switch (currentView) {
         case 'orders': return <OrderManagement />;
         case 'products': return <ProductManagement />;
@@ -302,18 +326,20 @@ const App: React.FC = () => {
         case 'home':
         default: return <MerchantDashboard />;
       }
-    }
-    switch (currentView) {
-      case 'product-detail': return <ProductDetail />;
-      case 'cart': return <CartView />;
-      case 'checkout': return <CheckoutView />;
-      case 'profile': return <ProfileView />;
-      case 'tracking': return <OrderTracking />;
-      case 'support': return <SupportView />;
-      case 'notifications': return <NotificationView />;
-      case 'ai-hub': return <AIHub />;
-      case 'home':
-      default: return <CustomerHome />;
+    } else {
+      // Customer Portal View Logic
+      switch (currentView) {
+        case 'product-detail': return <ProductDetail />;
+        case 'cart': return <CartView />;
+        case 'checkout': return <CheckoutView />;
+        case 'profile': return <ProfileView />;
+        case 'tracking': return <OrderTracking />;
+        case 'support': return <SupportView />;
+        case 'notifications': return <NotificationView />;
+        case 'ai-hub': return <AIHub />;
+        case 'home':
+        default: return <CustomerHome />;
+      }
     }
   };
 
@@ -328,12 +354,12 @@ const App: React.FC = () => {
       recentlyViewed, notifications, markAsRead, selectedOrder, setSelectedOrder,
       buyNowItem, setBuyNowItem
     }}>
-      <div className="h-full flex flex-col bg-[#F3F4F4] overflow-hidden">
+      <div className={`h-full flex flex-col overflow-hidden transition-colors duration-500 ${role === UserRole.MERCHANT ? 'bg-[#F3F4F4]' : 'bg-[#F3F4F4]'}`}>
         {role && <Header />}
         
         {role && (
           <motion.div
-            className="fixed top-14 left-0 right-0 h-1 bg-[#5F9598] origin-left z-50"
+            className={`fixed top-14 left-0 right-0 h-1 origin-left z-50 ${role === UserRole.MERCHANT ? 'bg-[#1D546D]' : 'bg-[#5F9598]'}`}
             style={{ scaleX }}
           />
         )}
@@ -352,7 +378,7 @@ const App: React.FC = () => {
               transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
               className="container mx-auto px-4 py-4 h-full"
             >
-              {renderViewContent()}
+              {renderPortal()}
             </motion.div>
           </AnimatePresence>
 
