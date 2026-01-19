@@ -5,7 +5,7 @@ import { Search, Star, Filter, Heart, Plus, TrendingUp, Clock, Bell } from 'luci
 import { motion } from 'framer-motion';
 
 const CustomerHome: React.FC = () => {
-  const { t, language, setSelectedProduct, setView, wishlist, toggleWishlist, products, recentlyViewed, notifications } = useApp();
+  const { t, language, setSelectedProduct, setView, wishlist, toggleWishlist, products, recentlyViewed, notifications, addToCart } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCat, setActiveCat] = useState('All');
 
@@ -164,7 +164,10 @@ const CustomerHome: React.FC = () => {
                   <div className="mt-auto pt-1 flex items-center justify-between">
                     <span className="text-[10px] font-black text-[#061E29]">₹{product.price}</span>
                     <button 
-                      onClick={(e) => { e.stopPropagation(); }}
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        addToCart(product.id, product.price);
+                      }}
                       className="w-5 h-5 bg-[#061E29] text-white rounded-lg flex items-center justify-center active:scale-75 transition-transform"
                     >
                       <Plus size={12} />
